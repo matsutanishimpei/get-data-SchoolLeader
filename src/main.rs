@@ -292,7 +292,6 @@ impl ViewerApp {
             let _ = fs::write("view_settings.toml", toml_content);
         }
     }
-}
     fn render_column_group(&mut self, ui: &mut eframe::egui::Ui, title: &str, range: std::ops::Range<usize>, merged: Option<Vec<(std::ops::RangeInclusive<usize>, &str)>>) {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
