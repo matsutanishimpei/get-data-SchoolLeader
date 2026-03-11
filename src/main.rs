@@ -207,14 +207,41 @@ fn run_viewer() -> Result<(), Box<dyn std::error::Error>> {
     eframe::run_native(
         "Student Data Viewer",
         options,
-        Box::new(|_cc| Ok(Box::new(ViewerApp::new())))
+        Box::new(|cc| {
+            setup_custom_fonts(&cc.egui_ctx);
+            Ok(Box::new(ViewerApp::new()))
+        })
     ).map_err(|e| format!("GUI Error: {}", e).into())
+}
+
+fn setup_custom_fonts(ctx: &eframe::egui::Context) {
+    let mut fonts = eframe::egui::FontDefinitions::default();
+
+    // 日本語表示のために、システムのMS Gothicなどを読み込む設定を追加
+    // 注: 本来は .ttf ファイルを同梱するのが確実ですが、
+    // ここでは一般的なパスにあるフォントを想定した設定を行います。
+    #[cfg(windows)]
+    {
+        if let Ok(font_data) = std::fs::read("C:\\Windows\\Fonts\\msgothic.ttc") {
+            fonts.font_data.insert(
+                "msgothic".to_owned(),
+                eframe::egui::FontData::from_owned(font_data).into(),
+            );
+            fonts.families.get_mut(&eframe::egui::FontFamily::Proportional).unwrap()
+                .insert(0, "msgothic".to_owned());
+            fonts.families.get_mut(&eframe::egui::FontFamily::Monospace).unwrap()
+                .push("msgothic".to_owned());
+        }
+    }
+    
+    ctx.set_fonts(fonts);
 }
 
 struct ViewerApp {
     headers: Vec<String>,
     rows: Vec<Vec<String>>,
     error_msg: Option<String>,
+    column_visibility: Vec<bool>,
 }
 
 impl ViewerApp {
@@ -222,7 +249,7 @@ impl ViewerApp {
         match fs::read_to_string("student_data.txt") {
             Ok(content) => {
                 let mut lines = content.lines();
-                let headers = lines.next()
+                let headers: Vec<String> = lines.next()
                     .unwrap_or_default()
                     .split(',')
                     .map(|s| s.to_string())
@@ -230,14 +257,52 @@ impl ViewerApp {
                 let rows = lines.map(|line| {
                     line.split(',').map(|s| s.to_string()).collect()
                 }).collect();
-                Self { headers, rows, error_msg: None }
+                let column_visibility = vec![true; headers.len()];
+                Self { headers, rows, error_msg: None, column_visibility }
             }
             Err(e) => Self {
                 headers: Vec::new(),
                 rows: Vec::new(),
                 error_msg: Some(format!("Failed to load student_data.txt: {}", e)),
+                column_visibility: Vec::new(),
             }
         }
+    }
+
+    fn render_column_group(&mut self, ui: &mut eframe::egui::Ui, title: &str, range: std::ops::Range<usize>, merged: Option<Vec<(usize, usize, &str)>>) {
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.label(eframe::egui::RichText::new(title).strong().size(14.0));
+                if ui.button("全選択").clicked() {
+                    for i in range.clone() { self.column_visibility[i] = true; }
+                }
+                if ui.button("全解除").clicked() {
+                    for i in range.clone() { self.column_visibility[i] = false; }
+                }
+            });
+
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing.x = 8.0;
+                let merged_list = merged.unwrap_or_default();
+                let mut i = range.start;
+                while i < range.end {
+                    // 統合対象かチェック
+                    if let Some(m) = merged_list.iter().find(|m| m.0 == i) {
+                        let mut vis = self.column_visibility[m.0];
+                        if ui.checkbox(&mut vis, m.2).changed() {
+                            self.column_visibility[m.0] = vis;
+                            self.column_visibility[m.1] = vis;
+                        }
+                        i = m.1 + 1;
+                    } else {
+                        if i < self.headers.len() {
+                            ui.checkbox(&mut self.column_visibility[i], &self.headers[i]);
+                        }
+                        i += 1;
+                    }
+                }
+            });
+        });
     }
 }
 
@@ -256,20 +321,49 @@ impl eframe::App for ViewerApp {
                 return;
             }
 
+            ui.add_space(5.0);
+
+            // --- 列の表示非表示切り替え (グループ化) ---
+            eframe::egui::CollapsingHeader::new("🔎 表示列の選択・一括操作").default_open(false).show(ui, |ui| {
+                ui.set_max_width(ui.available_width());
+                
+                // 本人情報: 0..17 (4, 5 は統合)
+                self.render_column_group(ui, "■ 本人情報", 0..17, Some(vec![(4, 5, "生年月日")]));
+                
+                ui.add_space(5.0);
+                // 保護者情報: 17..21
+                self.render_column_group(ui, "■ 保護者情報", 17..21, None);
+
+                ui.add_space(5.0);
+                // 緊急時情報: 21..27
+                self.render_column_group(ui, "■ 緊急時情報", 21..27, None);
+            });
+
             ui.add_space(10.0);
 
+            // 表示対象の列インデックスを抽出
+            let visible_indices: Vec<usize> = self.column_visibility.iter()
+                .enumerate()
+                .filter(|&(_, &visible)| visible)
+                .map(|(i, _)| i)
+                .collect();
+
+            if visible_indices.is_empty() {
+                ui.label("表示する列が選択されていません。");
+                return;
+            }
             
             use egui_extras::{TableBuilder, Column};
             TableBuilder::new(ui)
                 .striped(true)
                 .resizable(true)
                 .cell_layout(eframe::egui::Layout::left_to_right(eframe::egui::Align::Center))
-                .columns(Column::initial(100.0).at_least(50.0), self.headers.len())
+                .columns(Column::initial(100.0).at_least(50.0), visible_indices.len())
                 .min_scrolled_height(0.0)
                 .header(25.0, |mut header| {
-                    for h in &self.headers {
+                    for &idx in &visible_indices {
                         header.col(|ui| {
-                            ui.strong(h);
+                            ui.strong(&self.headers[idx]);
                         });
                     }
                 })
@@ -277,8 +371,9 @@ impl eframe::App for ViewerApp {
                     body.rows(20.0, self.rows.len(), |mut row| {
                         let row_index = row.index();
                         let data_row = &self.rows[row_index];
-                        for val in data_row {
+                        for &idx in &visible_indices {
                             row.col(|ui| {
+                                let val = data_row.get(idx).cloned().unwrap_or_default();
                                 ui.label(val);
                             });
                         }
