@@ -269,7 +269,7 @@ impl ViewerApp {
         }
     }
 
-    fn render_column_group(&mut self, ui: &mut eframe::egui::Ui, title: &str, range: std::ops::Range<usize>, merged: Option<Vec<(usize, usize, &str)>>) {
+    fn render_column_group(&mut self, ui: &mut eframe::egui::Ui, title: &str, range: std::ops::Range<usize>, merged: Option<Vec<(std::ops::RangeInclusive<usize>, &str)>>) {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.label(eframe::egui::RichText::new(title).strong().size(14.0));
@@ -287,13 +287,14 @@ impl ViewerApp {
                 let mut i = range.start;
                 while i < range.end {
                     // 統合対象かチェック
-                    if let Some(m) = merged_list.iter().find(|m| m.0 == i) {
-                        let mut vis = self.column_visibility[m.0];
-                        if ui.checkbox(&mut vis, m.2).changed() {
-                            self.column_visibility[m.0] = vis;
-                            self.column_visibility[m.1] = vis;
+                    if let Some(m) = merged_list.iter().find(|m| *m.0.start() == i) {
+                        let mut vis = self.column_visibility[*m.0.start()];
+                        if ui.checkbox(&mut vis, m.1).changed() {
+                            for idx in m.0.clone() {
+                                self.column_visibility[idx] = vis;
+                            }
                         }
-                        i = m.1 + 1;
+                        i = *m.0.end() + 1;
                     } else {
                         if i < self.headers.len() {
                             ui.checkbox(&mut self.column_visibility[i], &self.headers[i]);
@@ -327,16 +328,16 @@ impl eframe::App for ViewerApp {
             eframe::egui::CollapsingHeader::new("🔎 表示列の選択・一括操作").default_open(false).show(ui, |ui| {
                 ui.set_max_width(ui.available_width());
                 
-                // 本人情報: 0..17 (4, 5 は統合)
-                self.render_column_group(ui, "■ 本人情報", 0..17, Some(vec![(4, 5, "生年月日")]));
+                // 本人情報: 0..17 (4,5:生年月日, 7,8,9:本人住所)
+                self.render_column_group(ui, "■ 本人情報", 0..17, Some(vec![(4..=5, "生年月日"), (7..=9, "本人住所")]));
                 
                 ui.add_space(5.0);
                 // 保護者情報: 17..21
                 self.render_column_group(ui, "■ 保護者情報", 17..21, None);
 
                 ui.add_space(5.0);
-                // 緊急時情報: 21..27
-                self.render_column_group(ui, "■ 緊急時情報", 21..27, None);
+                // 緊急時情報: 21..27 (24,25,26:保護者住所)
+                self.render_column_group(ui, "■ 緊急時情報", 21..27, Some(vec![(24..=26, "保護者住所")]));
             });
 
             ui.add_space(10.0);
