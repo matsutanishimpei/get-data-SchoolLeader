@@ -39,7 +39,7 @@ fields = [
     { access_name = "氏名", csv_name = "保護者氏名", rightmost = true },
     { access_name = "エディット ボックス 折りたたみ", csv_name = "保護者続柄" },
     { access_name = "ＴＥＬ", csv_name = "保護者携帯" },
-    { access_name = "住所", csv_name = "保護住所1" },
-    { access_name = "護住所02", csv_name = "保護住所2" },
-    { access_name = "護住所03", csv_name = "保護住所3" }
+    { access_name = "住所", csv_name = "保護者住所1" },
+    { access_name = "護住所02", csv_name = "保護者住所2" },
+    { access_name = "護住所03", csv_name = "保護者住所3" }
 ]
