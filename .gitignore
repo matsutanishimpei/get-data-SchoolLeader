@@ -1,0 +1,6 @@
+/target/
+/tmp/
+Cargo.lock.cache
+**/*.rs.bk
+git_status.txt
+student_data.txt

@@ -1,44 +1,156 @@
 window_title = "School Leader - Ver. 6.9"
-wait_ms = 100
+wait_ms = 300
+transit_info_url = "https://transit.yahoo.co.jp/diainfo"
+visible_headers = [
+    "学籍番号",
+    "氏名",
+    "生年月日(西暦)",
+    "生年月日(和暦)",
+    "本人TEL",
+    "本人携帯",
+    "利用路線",
+]
 
 [[phases]]
 name = "1. 学生情報 (基本)"
-fields = [
-    { access_name = "学籍番号", csv_name = "学籍番号" },
-    { access_name = "氏名", csv_name = "氏名", rightmost = true },
-    { access_name = "ふりがな", csv_name = "ふりがな" },
-    { access_name = "英名", csv_name = "英名" },
-    { access_name = "生年月日", csv_name = "生年月日(西暦)" },
-    { access_name = "テキスト65", csv_name = "生年月日(和暦)" },
-    { access_name = "テキスト487", csv_name = "国籍" },
-    { access_name = "住所", csv_name = "本人住所1" },
-    { access_name = "住所02", csv_name = "本人住所2" },
-    { access_name = "住所03", csv_name = "本人住所3" },
-    { access_name = "TEL", csv_name = "本人TEL" },
-    { access_name = "携帯等", csv_name = "本人携帯" },
-    { access_name = "E-mail01", csv_name = "本人メール1" },
-    { access_name = "E-mail02", csv_name = "本人メール2" }
-]
+
+[[phases.fields]]
+access_name = "学籍番号"
+csv_name = "学籍番号"
+rightmost = false
+
+[[phases.fields]]
+access_name = "氏名"
+csv_name = "氏名"
+rightmost = true
+
+[[phases.fields]]
+access_name = "ふりがな"
+csv_name = "ふりがな"
+rightmost = false
+
+[[phases.fields]]
+access_name = "英名"
+csv_name = "英名"
+rightmost = false
+
+[[phases.fields]]
+access_name = "生年月日"
+csv_name = "生年月日(西暦)"
+rightmost = false
+
+[[phases.fields]]
+access_name = "テキスト65"
+csv_name = "生年月日(和暦)"
+rightmost = false
+
+[[phases.fields]]
+access_name = "テキスト487"
+csv_name = "国籍"
+rightmost = false
+
+[[phases.fields]]
+access_name = "住所"
+csv_name = "本人住所1"
+rightmost = false
+
+[[phases.fields]]
+access_name = "住所02"
+csv_name = "本人住所2"
+rightmost = false
+
+[[phases.fields]]
+access_name = "住所03"
+csv_name = "本人住所3"
+rightmost = false
+
+[[phases.fields]]
+access_name = "TEL"
+csv_name = "本人TEL"
+rightmost = false
+
+[[phases.fields]]
+access_name = "携帯等"
+csv_name = "本人携帯"
+rightmost = false
+
+[[phases.fields]]
+access_name = "E-mail01"
+csv_name = "本人メール1"
+rightmost = false
+
+[[phases.fields]]
+access_name = "E-mail02"
+csv_name = "本人メール2"
+rightmost = false
 
 [[phases]]
 name = "2. 通学経路/緊急連絡先"
-fields = [
-    { access_name = "利用路線", csv_name = "利用路線" },
-    { access_name = "自宅最寄駅", csv_name = "最寄駅" },
-    { access_name = "学校までの所要時間", csv_name = "所要時間(分)" },
-    { access_name = "緊急連絡者", csv_name = "緊急氏名" },
-    { access_name = "緊ふり", csv_name = "緊急ふりがな" },
-    { access_name = "続柄", csv_name = "緊急続柄" },
-    { access_name = "緊急連絡先", csv_name = "緊急電話" }
-]
+
+[[phases.fields]]
+access_name = "利用路線"
+csv_name = "本人通学路線"
+rightmost = false
+
+[[phases.fields]]
+access_name = "自宅最寄駅"
+csv_name = "本人最寄駅"
+rightmost = false
+
+[[phases.fields]]
+access_name = "学校までの所要時間"
+csv_name = "本人所要時間(分)"
+rightmost = false
+
+[[phases.fields]]
+access_name = "緊急連絡者"
+csv_name = "緊急氏名"
+rightmost = false
+
+[[phases.fields]]
+access_name = "緊ふり"
+csv_name = "緊急ふりがな"
+rightmost = false
+
+[[phases.fields]]
+access_name = "続柄"
+csv_name = "緊急続柄"
+rightmost = false
+
+[[phases.fields]]
+access_name = "緊急連絡先"
+csv_name = "緊急電話"
+rightmost = false
 
 [[phases]]
 name = "3. 父母等/保証人/負担者"
-fields = [
-    { access_name = "エディット ボックス 折りたたみ", csv_name = "保護続柄" },
-    { access_name = "氏名", csv_name = "保護氏名", rightmost = true },
-    { access_name = "ＴＥＬ", csv_name = "保護携帯" },
-    { access_name = "住所", csv_name = "保護住所1" },
-    { access_name = "護住所02", csv_name = "保護住所2" },
-    { access_name = "護住所03", csv_name = "保護住所3" }
-]
+
+[[phases.fields]]
+access_name = "氏名"
+csv_name = "保護者氏名"
+rightmost = true
+
+[[phases.fields]]
+access_name = "エディット ボックス 折りたたみ"
+csv_name = "保護者続柄"
+rightmost = false
+
+[[phases.fields]]
+access_name = "ＴＥＬ"
+csv_name = "保護者携帯"
+rightmost = false
+
+[[phases.fields]]
+access_name = "住所"
+csv_name = "保護者住所1"
+rightmost = false
+
+[[phases.fields]]
+access_name = "護住所02"
+csv_name = "保護者住所2"
+rightmost = false
+
+[[phases.fields]]
+access_name = "護住所03"
+csv_name = "保護者住所3"
+rightmost = false

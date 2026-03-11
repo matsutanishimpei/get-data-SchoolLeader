@@ -260,6 +260,7 @@ struct ViewerApp {
     error_msg: Option<String>,
     column_visibility: Vec<bool>,
     config: Config,
+    selected_row: Option<usize>,
 }
 
 impl ViewerApp {
@@ -289,7 +290,7 @@ impl ViewerApp {
             }
         }
 
-        Self { headers, rows, error_msg, column_visibility, config }
+        Self { headers, rows, error_msg, column_visibility, config, selected_row: None }
     }
 
     fn save_settings(&mut self) {
@@ -419,11 +420,17 @@ impl eframe::App for ViewerApp {
                 .body(|body| {
                     body.rows(20.0, self.rows.len(), |mut row| {
                         let row_index = row.index();
+                        row.set_selected(self.selected_row == Some(row_index));
+
                         let data_row = &self.rows[row_index];
                         for &idx in &visible_indices {
                             row.col(|ui| {
                                 let val = data_row.get(idx).cloned().unwrap_or_default();
-                                ui.label(val);
+                                // 全体の行選択を可能にするためにセル全体をボタン化
+                                let resp = ui.add_sized(ui.available_size(), eframe::egui::SelectableLabel::new(self.selected_row == Some(row_index), val));
+                                if resp.clicked() {
+                                    self.selected_row = Some(row_index);
+                                }
                             });
                         }
                     });
