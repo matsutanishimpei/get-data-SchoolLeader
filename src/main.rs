@@ -328,8 +328,8 @@ impl eframe::App for ViewerApp {
             eframe::egui::CollapsingHeader::new("🔎 表示列の選択・一括操作").default_open(false).show(ui, |ui| {
                 ui.set_max_width(ui.available_width());
                 
-                // 本人情報: 0..17 (4,5:生年月日, 7,8,9:本人住所)
-                self.render_column_group(ui, "■ 本人情報", 0..17, Some(vec![(4..=5, "生年月日"), (7..=9, "本人住所")]));
+                // 本人情報: 0..17 (4,5:生年月日, 7,8,9:本人住所, 12,13:本人メール)
+                self.render_column_group(ui, "■ 本人情報", 0..17, Some(vec![(4..=5, "生年月日"), (7..=9, "本人住所"), (12..=13, "本人メール")]));
                 
                 ui.add_space(5.0);
                 // 保護者情報: 17..21
