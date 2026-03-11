@@ -1,0 +1,11 @@
+[package]
+name = "student_list_clicker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+uiautomation = "0.4.0"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+eframe = "0.30"
+egui_extras = { version = "0.30" }
