@@ -9,7 +9,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::fs::{self, OpenOptions};
 use std::io::{Write, stdin};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const UIA_LIST_CONTROL_TYPE: i32 = 50008;
 const UIA_LIST_ITEM_CONTROL_TYPE: i32 = 50007;
@@ -237,6 +237,11 @@ fn setup_custom_fonts(ctx: &eframe::egui::Context) {
     ctx.set_fonts(fonts);
 }
 
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct ViewSettings {
+    visible_headers: Vec<String>,
+}
+
 struct ViewerApp {
     headers: Vec<String>,
     rows: Vec<Vec<String>>,
@@ -246,7 +251,7 @@ struct ViewerApp {
 
 impl ViewerApp {
     fn new() -> Self {
-        match fs::read_to_string("student_data.txt") {
+        let (headers, rows, error_msg) = match fs::read_to_string("student_data.txt") {
             Ok(content) => {
                 let mut lines = content.lines();
                 let headers: Vec<String> = lines.next()
@@ -257,27 +262,48 @@ impl ViewerApp {
                 let rows = lines.map(|line| {
                     line.split(',').map(|s| s.to_string()).collect()
                 }).collect();
-                let column_visibility = vec![true; headers.len()];
-                Self { headers, rows, error_msg: None, column_visibility }
+                (headers, rows, None)
             }
-            Err(e) => Self {
-                headers: Vec::new(),
-                rows: Vec::new(),
-                error_msg: Some(format!("Failed to load student_data.txt: {}", e)),
-                column_visibility: Vec::new(),
+            Err(e) => (Vec::new(), Vec::new(), Some(format!("Failed to load student_data.txt: {}", e))),
+        };
+
+        let mut column_visibility = vec![true; headers.len()];
+        
+        // 設定ファイルから読み込みを試行
+        if let Ok(settings_content) = fs::read_to_string("view_settings.toml") {
+            if let Ok(settings) = toml::from_str::<ViewSettings>(&settings_content) {
+                for (i, h) in headers.iter().enumerate() {
+                    column_visibility[i] = settings.visible_headers.contains(h);
+                }
             }
         }
+
+        Self { headers, rows, error_msg, column_visibility }
     }
 
+    fn save_settings(&self) {
+        let visible_headers: Vec<String> = self.headers.iter().enumerate()
+            .filter(|&(i, _)| self.column_visibility[i])
+            .map(|(_, h)| h.clone())
+            .collect();
+        
+        let settings = ViewSettings { visible_headers };
+        if let Ok(toml_content) = toml::to_string(&settings) {
+            let _ = fs::write("view_settings.toml", toml_content);
+        }
+    }
+}
     fn render_column_group(&mut self, ui: &mut eframe::egui::Ui, title: &str, range: std::ops::Range<usize>, merged: Option<Vec<(std::ops::RangeInclusive<usize>, &str)>>) {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.label(eframe::egui::RichText::new(title).strong().size(14.0));
                 if ui.button("全選択").clicked() {
                     for i in range.clone() { self.column_visibility[i] = true; }
+                    self.save_settings();
                 }
                 if ui.button("全解除").clicked() {
                     for i in range.clone() { self.column_visibility[i] = false; }
+                    self.save_settings();
                 }
             });
 
@@ -293,11 +319,14 @@ impl ViewerApp {
                             for idx in m.0.clone() {
                                 self.column_visibility[idx] = vis;
                             }
+                            self.save_settings();
                         }
                         i = *m.0.end() + 1;
                     } else {
                         if i < self.headers.len() {
-                            ui.checkbox(&mut self.column_visibility[i], &self.headers[i]);
+                            if ui.checkbox(&mut self.column_visibility[i], &self.headers[i]).changed() {
+                                self.save_settings();
+                            }
                         }
                         i += 1;
                     }
