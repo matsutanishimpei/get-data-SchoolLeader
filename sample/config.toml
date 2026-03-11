@@ -1,5 +1,5 @@
 window_title = "School Leader - Ver. 6.9"
-wait_ms = 300
+wait_ms = 100
 
 [[phases]]
 name = "1. 学生情報 (基本)"

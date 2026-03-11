@@ -15,13 +15,15 @@ const UIA_LIST_CONTROL_TYPE: i32 = 50008;
 const UIA_LIST_ITEM_CONTROL_TYPE: i32 = 50007;
 const UIA_EDIT_CONTROL_TYPE: i32 = 50004;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Config {
     window_title: String,
     #[serde(default = "default_wait_ms")]
     wait_ms: u64,
     #[serde(default = "default_transit_url")]
     pub transit_info_url: String,
+    #[serde(default)]
+    pub visible_headers: Vec<String>,
     phases: Vec<Phase>,
 }
 
@@ -33,13 +35,13 @@ fn default_transit_url() -> String {
     "https://transit.yahoo.co.jp/diainfo".to_string()
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Phase {
     name: String,
     fields: Vec<Field>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Field {
     access_name: String,
     csv_name: String,
@@ -203,12 +205,12 @@ fn run_collector(wait_ms_override: Option<u64>) -> uiautomation::Result<()> {
 }
 
 fn run_viewer() -> Result<(), Box<dyn std::error::Error>> {
-    // config を読み込んで URL を取得
     let config_content = fs::read_to_string("config.toml").unwrap_or_default();
     let config: Config = toml::from_str(&config_content).unwrap_or_else(|_| Config {
-        window_title: String::new(),
+        window_title: "Student List Clicker".to_string(),
         wait_ms: 300,
         transit_info_url: default_transit_url(),
+        visible_headers: Vec::new(),
         phases: Vec::new(),
     });
 
@@ -224,7 +226,7 @@ fn run_viewer() -> Result<(), Box<dyn std::error::Error>> {
         options,
         Box::new(|cc| {
             setup_custom_fonts(&cc.egui_ctx);
-            Ok(Box::new(ViewerApp::new(config.transit_info_url)))
+            Ok(Box::new(ViewerApp::new(config)))
         })
     ).map_err(|e| format!("GUI Error: {}", e).into())
 }
@@ -252,21 +254,16 @@ fn setup_custom_fonts(ctx: &eframe::egui::Context) {
     ctx.set_fonts(fonts);
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
-struct ViewSettings {
-    visible_headers: Vec<String>,
-}
-
 struct ViewerApp {
     headers: Vec<String>,
     rows: Vec<Vec<String>>,
     error_msg: Option<String>,
     column_visibility: Vec<bool>,
-    transit_url: String,
+    config: Config,
 }
 
 impl ViewerApp {
-    fn new(transit_url: String) -> Self {
+    fn new(config: Config) -> Self {
         let (headers, rows, error_msg) = match fs::read_to_string("student_data.txt") {
             Ok(content) => {
                 let mut lines = content.lines();
@@ -285,27 +282,25 @@ impl ViewerApp {
 
         let mut column_visibility = vec![true; headers.len()];
         
-        // 設定ファイルから読み込みを試行
-        if let Ok(settings_content) = fs::read_to_string("view_settings.toml") {
-            if let Ok(settings) = toml::from_str::<ViewSettings>(&settings_content) {
-                for (i, h) in headers.iter().enumerate() {
-                    column_visibility[i] = settings.visible_headers.contains(h);
-                }
+        // config内のvisible_headersがあれば適用
+        if !config.visible_headers.is_empty() {
+            for (i, h) in headers.iter().enumerate() {
+                column_visibility[i] = config.visible_headers.contains(h);
             }
         }
 
-        Self { headers, rows, error_msg, column_visibility, transit_url }
+        Self { headers, rows, error_msg, column_visibility, config }
     }
 
-    fn save_settings(&self) {
+    fn save_settings(&mut self) {
         let visible_headers: Vec<String> = self.headers.iter().enumerate()
             .filter(|&(i, _)| self.column_visibility[i])
             .map(|(_, h)| h.clone())
             .collect();
         
-        let settings = ViewSettings { visible_headers };
-        if let Ok(toml_content) = toml::to_string(&settings) {
-            let _ = fs::write("view_settings.toml", toml_content);
+        self.config.visible_headers = visible_headers;
+        if let Ok(toml_content) = toml::to_string_pretty(&self.config) {
+            let _ = fs::write("config.toml", toml_content);
         }
     }
     fn render_column_group(&mut self, ui: &mut eframe::egui::Ui, title: &str, range: std::ops::Range<usize>, merged: Option<Vec<(std::ops::RangeInclusive<usize>, &str)>>) {
@@ -357,7 +352,7 @@ impl eframe::App for ViewerApp {
             ui.horizontal(|ui| {
                 ui.heading("Student Data Viewer");
                 ui.with_layout(eframe::egui::Layout::right_to_left(eframe::egui::Align::Center), |ui| {
-                    ui.hyperlink_to("🚆 運行情報", &self.transit_url);
+                    ui.hyperlink_to("🚆 運行情報", &self.config.transit_info_url);
                 });
             });
             
@@ -377,16 +372,20 @@ impl eframe::App for ViewerApp {
             eframe::egui::CollapsingHeader::new("🔎 表示列の選択・一括操作").default_open(false).show(ui, |ui| {
                 ui.set_max_width(ui.available_width());
                 
-                // 本人情報: 0..17 (4,5:生年月日, 7,8,9:本人住所, 12,13:本人メール)
-                self.render_column_group(ui, "■ 本人情報", 0..17, Some(vec![(4..=5, "生年月日"), (7..=9, "本人住所"), (12..=13, "本人メール")]));
+                // 本人情報: 0..14 (4,5:生年月日, 7,8,9:本人住所, 12,13:本人メール)
+                self.render_column_group(ui, "■ 本人情報", 0..14, Some(vec![(4..=5, "生年月日"), (7..=9, "本人住所"), (12..=13, "本人メール")]));
                 
                 ui.add_space(5.0);
-                // 保護者情報: 17..21
-                self.render_column_group(ui, "■ 保護者情報", 17..21, None);
+                // 通学情報: 14..17
+                self.render_column_group(ui, "■ 通学情報", 14..17, None);
 
                 ui.add_space(5.0);
-                // 緊急時情報: 21..27 (24,25,26:保護者住所)
-                self.render_column_group(ui, "■ 緊急時情報", 21..27, Some(vec![(24..=26, "保護者住所")]));
+                // 緊急時情報: 17..21
+                self.render_column_group(ui, "■ 緊急時情報", 17..21, None);
+
+                ui.add_space(5.0);
+                // 保護者情報: 21..27 (24,25,26:保護者住所)
+                self.render_column_group(ui, "■ 保護者情報", 21..27, Some(vec![(24..=26, "保護者住所")]));
             });
 
             ui.add_space(10.0);

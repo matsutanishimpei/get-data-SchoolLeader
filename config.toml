@@ -24,9 +24,9 @@ fields = [
 [[phases]]
 name = "2. 通学経路/緊急連絡先"
 fields = [
-    { access_name = "利用路線", csv_name = "利用路線" },
-    { access_name = "自宅最寄駅", csv_name = "最寄駅" },
-    { access_name = "学校までの所要時間", csv_name = "所要時間(分)" },
+    { access_name = "利用路線", csv_name = "本人通学路線" },
+    { access_name = "自宅最寄駅", csv_name = "本人最寄駅" },
+    { access_name = "学校までの所要時間", csv_name = "本人所要時間(分)" },
     { access_name = "緊急連絡者", csv_name = "緊急氏名" },
     { access_name = "緊ふり", csv_name = "緊急ふりがな" },
     { access_name = "続柄", csv_name = "緊急続柄" },
@@ -36,9 +36,9 @@ fields = [
 [[phases]]
 name = "3. 父母等/保証人/負担者"
 fields = [
-    { access_name = "エディット ボックス 折りたたみ", csv_name = "保護続柄" },
-    { access_name = "氏名", csv_name = "保護氏名", rightmost = true },
-    { access_name = "ＴＥＬ", csv_name = "保護携帯" },
+    { access_name = "氏名", csv_name = "保護者氏名", rightmost = true },
+    { access_name = "エディット ボックス 折りたたみ", csv_name = "保護者続柄" },
+    { access_name = "ＴＥＬ", csv_name = "保護者携帯" },
     { access_name = "住所", csv_name = "保護住所1" },
     { access_name = "護住所02", csv_name = "保護住所2" },
     { access_name = "護住所03", csv_name = "保護住所3" }
