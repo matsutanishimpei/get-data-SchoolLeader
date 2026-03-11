@@ -1,5 +1,6 @@
 window_title = "School Leader - Ver. 6.9"
 wait_ms = 300
+transit_info_url = "https://transit.yahoo.co.jp/diainfo"
 
 [[phases]]
 name = "1. 学生情報 (基本)"

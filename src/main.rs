@@ -20,11 +20,17 @@ struct Config {
     window_title: String,
     #[serde(default = "default_wait_ms")]
     wait_ms: u64,
+    #[serde(default = "default_transit_url")]
+    pub transit_info_url: String,
     phases: Vec<Phase>,
 }
 
 fn default_wait_ms() -> u64 {
     300
+}
+
+fn default_transit_url() -> String {
+    "https://transit.yahoo.co.jp/diainfo".to_string()
 }
 
 #[derive(Debug, Deserialize)]
@@ -197,6 +203,15 @@ fn run_collector(wait_ms_override: Option<u64>) -> uiautomation::Result<()> {
 }
 
 fn run_viewer() -> Result<(), Box<dyn std::error::Error>> {
+    // config を読み込んで URL を取得
+    let config_content = fs::read_to_string("config.toml").unwrap_or_default();
+    let config: Config = toml::from_str(&config_content).unwrap_or_else(|_| Config {
+        window_title: String::new(),
+        wait_ms: 300,
+        transit_info_url: default_transit_url(),
+        phases: Vec::new(),
+    });
+
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_inner_size([1200.0, 800.0])
@@ -209,7 +224,7 @@ fn run_viewer() -> Result<(), Box<dyn std::error::Error>> {
         options,
         Box::new(|cc| {
             setup_custom_fonts(&cc.egui_ctx);
-            Ok(Box::new(ViewerApp::new()))
+            Ok(Box::new(ViewerApp::new(config.transit_info_url)))
         })
     ).map_err(|e| format!("GUI Error: {}", e).into())
 }
@@ -247,10 +262,11 @@ struct ViewerApp {
     rows: Vec<Vec<String>>,
     error_msg: Option<String>,
     column_visibility: Vec<bool>,
+    transit_url: String,
 }
 
 impl ViewerApp {
-    fn new() -> Self {
+    fn new(transit_url: String) -> Self {
         let (headers, rows, error_msg) = match fs::read_to_string("student_data.txt") {
             Ok(content) => {
                 let mut lines = content.lines();
@@ -278,7 +294,7 @@ impl ViewerApp {
             }
         }
 
-        Self { headers, rows, error_msg, column_visibility }
+        Self { headers, rows, error_msg, column_visibility, transit_url }
     }
 
     fn save_settings(&self) {
@@ -338,7 +354,12 @@ impl ViewerApp {
 impl eframe::App for ViewerApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Student Data Viewer");
+            ui.horizontal(|ui| {
+                ui.heading("Student Data Viewer");
+                ui.with_layout(eframe::egui::Layout::right_to_left(eframe::egui::Align::Center), |ui| {
+                    ui.hyperlink_to("🚆 運行情報", &self.transit_url);
+                });
+            });
             
             if let Some(msg) = &self.error_msg {
                 ui.colored_label(eframe::egui::Color32::RED, msg);
