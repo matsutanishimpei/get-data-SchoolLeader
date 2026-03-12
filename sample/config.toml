@@ -2,13 +2,8 @@ window_title = "School Leader - Ver. 6.9"
 wait_ms = 300
 transit_info_url = "https://transit.yahoo.co.jp/diainfo"
 visible_headers = [
-    "学籍番号",
-    "氏名",
-    "生年月日(西暦)",
-    "生年月日(和暦)",
-    "本人TEL",
-    "本人携帯",
-    "利用路線",
+    "保護続柄",
+    "保護氏名",
 ]
 
 [[phases]]

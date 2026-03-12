@@ -373,8 +373,13 @@ impl eframe::App for ViewerApp {
             eframe::egui::CollapsingHeader::new("🔎 表示列の選択・一括操作").default_open(false).show(ui, |ui| {
                 ui.set_max_width(ui.available_width());
                 
-                // 本人情報: 0..14 (4,5:生年月日, 7,8,9:本人住所, 12,13:本人メール)
-                self.render_column_group(ui, "■ 本人情報", 0..14, Some(vec![(4..=5, "生年月日"), (7..=9, "本人住所"), (12..=13, "本人メール")]));
+                // 本人情報: 0..14 (4,5:生年月日, 7,8,9:本人住所, 10,11:本人電話, 12,13:本人メール)
+                self.render_column_group(ui, "■ 本人情報", 0..14, Some(vec![
+                    (4..=5, "生年月日"), 
+                    (7..=9, "本人住所"), 
+                    (10..=11, "本人携帯"),
+                    (12..=13, "本人メール")
+                ]));
                 
                 ui.add_space(5.0);
                 // 通学情報: 14..17
@@ -391,14 +396,32 @@ impl eframe::App for ViewerApp {
 
             ui.add_space(10.0);
 
-            // 表示対象の列インデックスを抽出
-            let visible_indices: Vec<usize> = self.column_visibility.iter()
-                .enumerate()
-                .filter(|&(_, &visible)| visible)
-                .map(|(i, _)| i)
-                .collect();
+            // 表示対象の列を、グループ化を考慮して抽出
+            let groups = vec![
+                (7..=9, "本人住所"),
+                (12..=13, "本人メール"),
+                (24..=26, "保護者住所"),
+            ];
 
-            if visible_indices.is_empty() {
+            let mut display_cols = Vec::new();
+            let mut i = 0;
+            while i < self.headers.len() {
+                if !self.column_visibility[i] {
+                    i += 1;
+                    continue;
+                }
+                
+                // グループに属しているかチェック
+                if let Some((range, label)) = groups.iter().find(|(r, _)| *r.start() == i) {
+                    display_cols.push((label.to_string(), range.clone().collect::<Vec<_>>()));
+                    i = *range.end() + 1;
+                } else {
+                    display_cols.push((self.headers[i].clone(), vec![i]));
+                    i += 1;
+                }
+            }
+
+            if display_cols.is_empty() {
                 ui.label("表示する列が選択されていません。");
                 return;
             }
@@ -408,12 +431,12 @@ impl eframe::App for ViewerApp {
                 .striped(true)
                 .resizable(true)
                 .cell_layout(eframe::egui::Layout::left_to_right(eframe::egui::Align::Center))
-                .columns(Column::initial(100.0).at_least(50.0), visible_indices.len())
+                .columns(Column::initial(150.0).at_least(50.0), display_cols.len())
                 .min_scrolled_height(0.0)
                 .header(25.0, |mut header| {
-                    for &idx in &visible_indices {
+                    for (label, _) in &display_cols {
                         header.col(|ui| {
-                            ui.strong(&self.headers[idx]);
+                            ui.strong(label);
                         });
                     }
                 })
@@ -423,14 +446,25 @@ impl eframe::App for ViewerApp {
                         row.set_selected(self.selected_row == Some(row_index));
 
                         let data_row = &self.rows[row_index];
-                        for &idx in &visible_indices {
+                        for (_, indices) in &display_cols {
                             row.col(|ui| {
-                                let val = data_row.get(idx).cloned().unwrap_or_default();
-                                // 全体の行選択を可能にするためにセル全体をボタン化
-                                let resp = ui.add_sized(ui.available_size(), eframe::egui::SelectableLabel::new(self.selected_row == Some(row_index), val));
-                                if resp.clicked() {
-                                    self.selected_row = Some(row_index);
-                                }
+                                let val = indices.iter()
+                                    .filter_map(|&idx| data_row.get(idx))
+                                    .map(|s| s.trim())
+                                    .filter(|s| !s.is_empty())
+                                    .collect::<Vec<_>>()
+                                    .join(" ");
+                                
+                                // 左寄せを確実にしつつクリック範囲を広げる
+                                ui.with_layout(eframe::egui::Layout::left_to_right(eframe::egui::Align::Center), |ui| {
+                                    ui.style_mut().spacing.item_spacing.x = 0.0;
+                                    let resp = ui.selectable_label(self.selected_row == Some(row_index), &val);
+                                    if resp.clicked() {
+                                        self.selected_row = Some(row_index);
+                                        ui.output_mut(|o| o.copied_text = val.clone());
+                                    }
+                                    resp.on_hover_text("クリックでコピー");
+                                });
                             });
                         }
                     });
